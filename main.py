@@ -27,9 +27,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from sqlalchemy import text
+
 app.include_router(empresa_router)
 
 
 @app.get("/")
 def health_check():
     return {"status": "ok", "servico": "ms2_empresas"}
+
+@app.get("/health")
+def database_health():
+    """Verifica se o banco de dados está acessível."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected", "servico": "ms2_empresas"}
+    except Exception as e:
+        return {
+            "status": "error", 
+            "database": "disconnected", 
+            "details": str(e),
+            "servico": "ms2_empresas"
+        }
