@@ -9,6 +9,7 @@ class Empresa:
     nome: str
     descricao: str
     dono_id: int
+    cor: str = "indigo"
     status: str = "ativo"
     criado_em: datetime = field(default_factory=datetime.utcnow)
 

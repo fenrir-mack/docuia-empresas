@@ -15,10 +15,10 @@ class EmpresaRepositoryImpl(IEmpresaRepository):
 
     def _para_entidade(self, m: EmpresaModel) -> Empresa:
         return Empresa(id=m.id, nome=m.nome, descricao=m.descricao,
-                       dono_id=m.dono_id, status=m.status, criado_em=m.criado_em)
+                       dono_id=m.dono_id, status=m.status, criado_em=m.criado_em, cor=getattr(m, 'cor', 'indigo'))
 
     def salvar(self, empresa: Empresa) -> Empresa:
-        model = EmpresaModel(nome=empresa.nome, descricao=empresa.descricao, dono_id=empresa.dono_id, status=empresa.status)
+        model = EmpresaModel(nome=empresa.nome, descricao=empresa.descricao, dono_id=empresa.dono_id, status=empresa.status, cor=empresa.cor)
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
