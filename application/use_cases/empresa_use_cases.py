@@ -1,3 +1,4 @@
+import random
 from typing import List
 from domain.entities.empresa import Empresa, Membro, Solicitacao, Papel
 from domain.ports.empresa_repository import (
@@ -24,7 +25,8 @@ class CriarEmpresaUseCase:
         self.membro_repo = membro_repo
 
     def executar(self, nome: str, descricao: str, usuario_id: int) -> Empresa:
-        empresa = Empresa(id=None, nome=nome, descricao=descricao, dono_id=usuario_id)
+        cor = random.choice(['teal', 'rose', 'amber', 'indigo', 'emerald', 'cyan'])
+        empresa = Empresa(id=None, nome=nome, descricao=descricao, dono_id=usuario_id, cor=cor)
         empresa = self.repo.salvar(empresa)
 
         # Criador vira owner automaticamente

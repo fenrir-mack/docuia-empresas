@@ -45,7 +45,7 @@ class SolicitacaoAcaoInput(BaseModel):
 def listar_empresas(usuario_id: int = Depends(get_usuario_id), db: Session = Depends(get_db)):
     repo = EmpresaRepositoryImpl(db)
     empresas = ListarEmpresasUseCase(repo).executar(usuario_id)
-    return [{"id": e.id, "nome": e.nome, "descricao": e.descricao, "dono_id": e.dono_id} for e in empresas]
+    return [{"id": e.id, "nome": e.nome, "descricao": e.descricao, "dono_id": e.dono_id, "cor": e.cor} for e in empresas]
 
 
 @router.post("", status_code=201)
@@ -54,7 +54,7 @@ def criar_empresa(dados: EmpresaInput, usuario_id: int = Depends(get_usuario_id)
     membro_repo = MembroRepositoryImpl(db)
     papel_repo = PapelRepositoryImpl(db)
     empresa = CriarEmpresaUseCase(repo, membro_repo, papel_repo).executar(dados.nome, dados.descricao, usuario_id)
-    return {"id": empresa.id, "nome": empresa.nome}
+    return {"id": empresa.id, "nome": empresa.nome, "cor": empresa.cor}
 
 
 @router.get("/{empresa_id}")
@@ -63,7 +63,7 @@ def detalhe_empresa(empresa_id: int, usuario_id: int = Depends(get_usuario_id), 
     empresa = repo.buscar_por_id(empresa_id)
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa não encontrada")
-    return {"id": empresa.id, "nome": empresa.nome, "descricao": empresa.descricao, "dono_id": empresa.dono_id}
+    return {"id": empresa.id, "nome": empresa.nome, "descricao": empresa.descricao, "dono_id": empresa.dono_id, "cor": empresa.cor}
 
 
 @router.put("/{empresa_id}")
@@ -72,7 +72,7 @@ def editar_empresa(empresa_id: int, dados: EmpresaInput, usuario_id: int = Depen
     membro_repo = MembroRepositoryImpl(db)
     try:
         empresa = EditarEmpresaUseCase(repo, membro_repo).executar(empresa_id, dados.nome, dados.descricao, usuario_id)
-        return {"id": empresa.id, "nome": empresa.nome}
+        return {"id": empresa.id, "nome": empresa.nome, "cor": empresa.cor}
     except (ValueError, PermissionError) as e:
         raise HTTPException(status_code=403, detail=str(e))
 
