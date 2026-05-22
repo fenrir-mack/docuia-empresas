@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
@@ -33,6 +33,7 @@ class SolicitacaoModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
     usuario_id = Column(Integer, nullable=False)
+    mensagem = Column(Text, nullable=True)
     status = Column(String(50), default="pendente")
     criado_em = Column(DateTime, default=datetime.utcnow)
 

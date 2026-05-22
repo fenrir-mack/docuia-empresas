@@ -28,6 +28,7 @@ class Solicitacao:
     id: Optional[int]
     empresa_id: int
     usuario_id: int
+    mensagem: Optional[str] = None
     status: str = "pendente"  # "pendente", "aprovada", "recusada"
     criado_em: datetime = field(default_factory=datetime.utcnow)
 

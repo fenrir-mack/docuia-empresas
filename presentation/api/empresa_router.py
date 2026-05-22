@@ -15,7 +15,7 @@ from application.use_cases.empresa_use_cases import (
     ListarPapeisUseCase, CriarPapelUseCase, EditarPapelUseCase, DeletarPapelUseCase,
     ListarEmpresasUseCase, CriarEmpresaUseCase, EditarEmpresaUseCase,
     DeletarEmpresaUseCase, ListarMembrosUseCase, RemoverMembroUseCase,
-    SolicitarAcessoUseCase, GerenciarSolicitacaoUseCase, AlterarRoleMembroUseCase
+    SolicitarAcessoUseCase, GerenciarSolicitacaoUseCase, AlterarRoleMembroUseCase, SairEmpresaUseCase
 )
 
 router = APIRouter(prefix="/empresas", tags=["Empresas"])
@@ -39,6 +39,9 @@ class EmpresaInput(BaseModel):
 
 class SolicitacaoAcaoInput(BaseModel):
     acao: str  # "aprovada" ou "recusada"
+
+class SolicitarAcessoInput(BaseModel):
+    mensagem: str | None = None
 
 
 # --- Endpoints ---
@@ -72,6 +75,7 @@ def listar_empresas_recentes(limit: int = 6, usuario_id: int = Depends(get_usuar
         db.query(EmpresaModel, AcessoEmpresaModel.ultimo_acesso_em)
         .join(AcessoEmpresaModel, AcessoEmpresaModel.empresa_id == EmpresaModel.id)
         .filter(AcessoEmpresaModel.usuario_id == usuario_id)
+        .filter(EmpresaModel.status != "arquivado")
         .order_by(AcessoEmpresaModel.ultimo_acesso_em.desc())
         .limit(limit)
         .all()
@@ -118,10 +122,29 @@ def editar_empresa(empresa_id: int, dados: EmpresaInput, usuario_id: int = Depen
 
 
 @router.delete("/{empresa_id:int}", status_code=204)
-def deletar_empresa(empresa_id: int, usuario_id: int = Depends(get_usuario_id), db: Session = Depends(get_db)):
+def deletar_empresa(
+    empresa_id: int,
+    usuario_id: int = Depends(get_usuario_id),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
     repo = EmpresaRepositoryImpl(db)
     try:
         DeletarEmpresaUseCase(repo).executar(empresa_id, usuario_id)
+
+        projetos_url = os.getenv("PROJETOS_URL", "http://localhost:8003").rstrip("/")
+        try:
+            import urllib.request
+
+            req = urllib.request.Request(
+                f"{projetos_url}/projetos/empresa/{empresa_id}/ocultar",
+                method="DELETE",
+                headers={"Authorization": f"Bearer {credentials.credentials}"},
+            )
+            urllib.request.urlopen(req, timeout=5).read()
+        except Exception:
+            # best effort: não impede a exclusão da empresa
+            pass
     except (ValueError, PermissionError) as e:
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -139,6 +162,18 @@ def remover_membro(empresa_id: int, usuario_id_alvo: int, usuario_id: int = Depe
     empresa_repo = EmpresaRepositoryImpl(db)
     try:
         RemoverMembroUseCase(membro_repo, empresa_repo).executar(empresa_id, usuario_id_alvo, usuario_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{empresa_id:int}/sair", status_code=204)
+def sair_da_empresa(empresa_id: int, usuario_id: int = Depends(get_usuario_id), db: Session = Depends(get_db)):
+    membro_repo = MembroRepositoryImpl(db)
+    empresa_repo = EmpresaRepositoryImpl(db)
+    try:
+        SairEmpresaUseCase(membro_repo, empresa_repo).executar(empresa_id, usuario_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -164,15 +199,16 @@ def alterar_role_membro(empresa_id: int, usuario_id_alvo: int, dados: AlterarRol
 def listar_solicitacoes(empresa_id: int, usuario_id: int = Depends(get_usuario_id), db: Session = Depends(get_db)):
     sol_repo = SolicitacaoRepositoryImpl(db)
     solicitacoes = sol_repo.listar_por_empresa(empresa_id)
-    return [{"id": s.id, "usuario_id": s.usuario_id, "status": s.status} for s in solicitacoes]
+    return [{"id": s.id, "usuario_id": s.usuario_id, "status": s.status, "mensagem": getattr(s, "mensagem", None)} for s in solicitacoes]
 
 
 @router.post("/{empresa_id:int}/solicitacoes", status_code=201)
-def solicitar_acesso(empresa_id: int, usuario_id: int = Depends(get_usuario_id), db: Session = Depends(get_db)):
+def solicitar_acesso(empresa_id: int, dados: SolicitarAcessoInput | None = None, usuario_id: int = Depends(get_usuario_id), db: Session = Depends(get_db)):
     sol_repo = SolicitacaoRepositoryImpl(db)
     membro_repo = MembroRepositoryImpl(db)
     try:
-        sol = SolicitarAcessoUseCase(sol_repo, membro_repo).executar(empresa_id, usuario_id)
+        mensagem = dados.mensagem if dados else None
+        sol = SolicitarAcessoUseCase(sol_repo, membro_repo).executar(empresa_id, usuario_id, mensagem=mensagem)
         return {"id": sol.id, "status": sol.status}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

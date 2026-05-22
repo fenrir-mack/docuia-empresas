@@ -39,7 +39,9 @@ class EmpresaRepositoryImpl(IEmpresaRepository):
         model = self.db.query(EmpresaModel).filter(EmpresaModel.id == empresa.id).first()
         model.nome = empresa.nome
         model.descricao = empresa.descricao
+        model.dono_id = empresa.dono_id
         model.status = empresa.status
+        model.cor = empresa.cor
         self.db.commit()
         self.db.refresh(model)
         return self._para_entidade(model)
@@ -95,11 +97,12 @@ class SolicitacaoRepositoryImpl(ISolicitacaoRepository):
 
     def _para_entidade(self, m: SolicitacaoModel) -> Solicitacao:
         return Solicitacao(id=m.id, empresa_id=m.empresa_id,
-                           usuario_id=m.usuario_id, status=m.status, criado_em=m.criado_em)
+                           usuario_id=m.usuario_id, mensagem=getattr(m, 'mensagem', None), status=m.status, criado_em=m.criado_em)
 
     def salvar(self, solicitacao: Solicitacao) -> Solicitacao:
         model = SolicitacaoModel(empresa_id=solicitacao.empresa_id,
-                                 usuario_id=solicitacao.usuario_id)
+                                 usuario_id=solicitacao.usuario_id,
+                                 mensagem=solicitacao.mensagem)
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)
