@@ -43,3 +43,12 @@ class PapelModel(Base):
     nome = Column(String(50), nullable=False)
     descricao = Column(String(255), default="")
     permissoes = Column(String(1000), default="")
+
+
+class AcessoEmpresaModel(Base):
+    __tablename__ = "acessos_empresa"
+
+    id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    usuario_id = Column(Integer, nullable=False, index=True)
+    ultimo_acesso_em = Column(DateTime, default=datetime.utcnow, nullable=False)
